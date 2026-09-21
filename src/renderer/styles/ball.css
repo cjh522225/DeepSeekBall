@@ -1,0 +1,90 @@
+.ball-stage {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.ball-button {
+  position: relative;
+  border: none;
+  border-radius: 50%;
+  padding: 0;
+  cursor: grab;
+  background: transparent;
+  transition: transform 0.16s ease;
+}
+
+.ball-button.is-pressed {
+  cursor: grabbing;
+  transform: scale(0.94);
+}
+
+.ball-button:active {
+  transform: scale(0.94);
+}
+
+.ball-glow {
+  position: absolute;
+  inset: -6%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, rgba(120, 156, 255, 0.55), rgba(58, 85, 224, 0.18) 62%, transparent 72%);
+  filter: blur(6px);
+  animation: ballPulse 2.8s ease-in-out infinite;
+}
+
+.ball-inner {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: linear-gradient(140deg, #6d8bff 0%, #4d6bfe 46%, #3850e0 100%);
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.45),
+    0 6px 18px rgba(45, 70, 200, 0.42);
+  transition: box-shadow 0.2s ease;
+}
+
+.ball-button:hover .ball-inner {
+  box-shadow:
+    inset 0 1px 2px rgba(255, 255, 255, 0.5),
+    0 8px 24px rgba(45, 70, 200, 0.55);
+}
+
+.ball-icon {
+  width: 54%;
+  height: 54%;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.18));
+}
+
+.ball-spinner {
+  width: 46%;
+  height: 46%;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  animation: ballSpin 0.9s linear infinite;
+}
+
+@keyframes ballSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ballPulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}

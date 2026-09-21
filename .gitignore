@@ -1,0 +1,10 @@
+node_modules/
+out/
+release/
+dist/
+*.log
+*.png
+!resources/*.png
+!docs/*.png
+.env
+.DS_Store

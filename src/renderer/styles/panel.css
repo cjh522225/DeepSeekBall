@@ -1,0 +1,36 @@
+.panel-stage {
+  width: 100vw;
+  height: 100vh;
+  padding: 6px;
+  background: transparent;
+  display: flex;
+}
+
+.panel-card {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(228, 230, 235, 1);
+  background: #ffffff;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.22);
+  transform: translateX(26px);
+  opacity: 0;
+  transition:
+    transform 0.19s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.19s ease;
+}
+
+.panel-card.open {
+  transform: none;
+  opacity: 1;
+}
+
+.dark .panel-card {
+  border-color: #34363a;
+  background: #232427;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+}

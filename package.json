@@ -1,0 +1,98 @@
+{
+  "name": "deepseek-ball",
+  "version": "0.1.0",
+  "private": true,
+  "description": "桌面悬浮球 AI 助手（DeepSeek）",
+  "main": "out/main/index.js",
+  "author": "hwq631705703",
+  "license": "MIT",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
+    "test": "vitest run",
+    "postinstall": "electron-builder install-app-deps",
+    "dist": "node scripts/make-ico.cjs && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/patch-7za.ps1 && electron-vite build && electron-builder"
+  },
+  "dependencies": {
+    "openai": "^4.77.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "electron-vite": "^2.3.0",
+    "highlight.js": "^11.11.0",
+    "katex": "^0.16.11",
+    "postcss": "^8.4.49",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-markdown": "^9.0.1",
+    "rehype-highlight": "^7.0.1",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.0",
+    "remark-math": "^6.0.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2",
+    "vite": "^5.4.11",
+    "vitest": "^2.1.8",
+    "zustand": "^5.0.2"
+  },
+  "build": {
+    "appId": "com.hwq.deepseekball",
+    "productName": "DeepSeekBall",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "afterPack": "scripts/after-pack.cjs",
+    "files": [
+      "out/**/*",
+      "resources/icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/ocr.ps1",
+        "to": "ocr.ps1"
+      },
+      {
+        "from": "resources/fullscreen-probe.ps1",
+        "to": "fullscreen-probe.ps1"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "resources/icon.png",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "${productName}-Portable-${version}.${ext}"
+    }
+  }
+}
