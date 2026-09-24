@@ -12,6 +12,7 @@ import {
   SparkleIcon
 } from './Icons'
 import { Markdown } from './Markdown'
+import { ToolCallCard } from './ToolCallCard'
 
 interface Props {
   message: ChatMessage
@@ -99,6 +100,13 @@ export const MessageItem = memo(function MessageItem({ message, isLast }: Props)
                 : 'bg-white dark:bg-dsdark-panel'
             }`}
           >
+            {message.toolCalls?.length ? (
+              <div className="mb-1.5 flex flex-col gap-1.5">
+                {message.toolCalls.map((record) => (
+                  <ToolCallCard key={record.id} record={record} />
+                ))}
+              </div>
+            ) : null}
             {message.content ? (
               <Markdown content={message.content} />
             ) : streaming ? (

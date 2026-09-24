@@ -3,6 +3,7 @@ import type { ProviderKind } from '../../../shared/types'
 import { useChatStore } from '../stores/chatStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { AlertIcon, CheckIcon, FolderIcon } from './Icons'
+import { McpSettings } from './McpSettings'
 
 function Section({ title, children }: { title: string; children: ReactNode }): JSX.Element {
   return (
@@ -429,6 +430,10 @@ export function SettingsView(): JSX.Element {
             <span className="break-all">{status.message}</span>
           </div>
         ) : null}
+      </Section>
+
+      <Section title="MCP 服务器">
+        <McpSettings />
       </Section>
 
       <Section title="图片提问">

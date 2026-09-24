@@ -3,7 +3,8 @@ import path from 'node:path'
 import { randomUUID } from 'node:crypto'
 import OpenAI from 'openai'
 import type { ChatMessage, Settings } from '../../shared/types'
-import type { ChatProvider, ProviderContext } from './types'
+import type { ChatProvider, ProviderContext, ProviderTurn } from './types'
+import type { ToolCallRequest } from '../mcp/tools'
 
 export const OPENCODE_CLIENT = 'deepseek-ball/0.1.0'
 
@@ -94,15 +95,17 @@ export function describeError(error: unknown): string {
 }
 
 export const openAICompatibleProvider: ChatProvider = {
-  async stream(ctx: ProviderContext): Promise<void> {
+  async stream(ctx: ProviderContext): Promise<ProviderTurn> {
     const client = createClient(ctx.settings, ctx.apiKey, 180_000)
+    const drafts = new Map<number, ToolCallDraft>()
     try {
       const stream = await client.chat.completions.create(
         {
           model: ctx.settings.model,
-          messages: buildApiMessages(ctx.settings, ctx.messages) as never,
+          messages: (ctx.apiMessages ?? buildApiMessages(ctx.settings, ctx.messages)) as never,
           temperature: ctx.settings.temperature,
-          stream: true
+          stream: true,
+          tools: ctx.tools?.length ? (ctx.tools as never) : undefined
         },
         {
           signal: ctx.signal,
@@ -111,17 +114,53 @@ export const openAICompatibleProvider: ChatProvider = {
       )
       for await (const chunk of stream) {
         const delta = chunk.choices[0]?.delta as
-          | { content?: string; reasoning_content?: string }
+          | { content?: string; reasoning_content?: string; tool_calls?: ToolCallDelta[] }
           | undefined
         if (!delta) continue
         if (delta.reasoning_content) ctx.onChunk({ reasoningDelta: delta.reasoning_content })
         if (delta.content) ctx.onChunk({ contentDelta: delta.content })
+        if (delta.tool_calls?.length) accumulateToolCalls(drafts, delta.tool_calls)
       }
     } catch (error) {
       if (ctx.signal.aborted) throw error
       throw new Error(describeError(error))
     }
+    return { toolCalls: toToolCallRequests(drafts) }
   }
+}
+
+interface ToolCallDraft {
+  id: string
+  name: string
+  arguments: string
+}
+
+interface ToolCallDelta {
+  index?: number
+  id?: string
+  function?: { name?: string; arguments?: string }
+}
+
+function accumulateToolCalls(drafts: Map<number, ToolCallDraft>, deltas: ToolCallDelta[]): void {
+  for (const delta of deltas) {
+    const index = delta.index ?? 0
+    const draft = drafts.get(index) ?? { id: '', name: '', arguments: '' }
+    if (delta.id) draft.id = delta.id
+    if (delta.function?.name) draft.name = delta.function.name
+    if (delta.function?.arguments) draft.arguments += delta.function.arguments
+    drafts.set(index, draft)
+  }
+}
+
+function toToolCallRequests(drafts: Map<number, ToolCallDraft>): ToolCallRequest[] {
+  return [...drafts.entries()]
+    .sort(([a], [b]) => a - b)
+    .filter(([, draft]) => draft.name.length > 0)
+    .map(([, draft]) => ({
+      id: draft.id || randomUUID(),
+      name: draft.name,
+      argumentsJson: draft.arguments
+    }))
 }
 
 export async function testConnection(

@@ -16,6 +16,7 @@
     "dist": "node scripts/make-ico.cjs && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/patch-7za.ps1 && electron-vite build && electron-builder"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "openai": "^4.77.0"
   },
   "devDependencies": {

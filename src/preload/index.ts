@@ -5,10 +5,17 @@ import type {
   CaptureInitPayload,
   CaptureSubmitPayload,
   ChatSendPayload,
+  McpCallToolPayload,
+  McpServerConfig,
+  McpServerStatus,
+  McpToolInfo,
   SettingsPatch,
   StreamChunkEvent,
   StreamDoneEvent,
-  StreamErrorEvent
+  StreamErrorEvent,
+  ToolCallEvent,
+  ToolConfirmRequestEvent,
+  ToolConfirmResponsePayload
 } from '../shared/types'
 
 function on<T>(channel: string, cb: (payload: T) => void): Unsubscribe {
@@ -44,9 +51,13 @@ const api: RendererApi = {
   chat: {
     send: (payload: ChatSendPayload) => ipcRenderer.invoke('chat:send', payload),
     stop: (requestId: string) => ipcRenderer.send('chat:stop', requestId),
+    respondToolConfirm: (payload: ToolConfirmResponsePayload) =>
+      ipcRenderer.send('chat:toolConfirmResponse', payload),
     onChunk: (cb) => on<StreamChunkEvent>('chat:chunk', cb),
     onDone: (cb) => on<StreamDoneEvent>('chat:done', cb),
-    onError: (cb) => on<StreamErrorEvent>('chat:error', cb)
+    onError: (cb) => on<StreamErrorEvent>('chat:error', cb),
+    onToolCall: (cb) => on<ToolCallEvent>('chat:tool-call', cb),
+    onToolConfirmRequest: (cb) => on<ToolConfirmRequestEvent>('chat:toolConfirmRequest', cb)
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
@@ -75,6 +86,27 @@ const api: RendererApi = {
   },
   ocr: {
     run: (filePath: string) => ipcRenderer.invoke('ocr:run', filePath)
+  },
+  mcp: {
+    listServers: () => ipcRenderer.invoke('mcp:list-servers') as Promise<McpServerConfig[]>,
+    listStatuses: () => ipcRenderer.invoke('mcp:list-statuses') as Promise<McpServerStatus[]>,
+    upsertServer: (config: McpServerConfig) =>
+      ipcRenderer.invoke('mcp:upsert-server', config) as Promise<McpServerConfig[]>,
+    removeServer: (id: string) =>
+      ipcRenderer.invoke('mcp:remove-server', id) as Promise<McpServerConfig[]>,
+    testConnection: (config: McpServerConfig) =>
+      ipcRenderer.invoke('mcp:test-connection', config) as Promise<{
+        ok: boolean
+        message: string
+        tools: McpToolInfo[]
+      }>,
+    listTools: (serverId?: string) =>
+      ipcRenderer.invoke('mcp:list-tools', serverId) as Promise<McpToolInfo[]>,
+    callTool: (payload: McpCallToolPayload) =>
+      ipcRenderer.invoke('mcp:call-tool', payload) as Promise<{ ok: boolean; text: string }>,
+    refresh: () => ipcRenderer.invoke('mcp:refresh') as Promise<McpServerStatus[]>,
+    onStatus: (cb) => on<McpServerStatus>('mcp:status', cb),
+    onTools: (cb) => on<{ serverId: string; tools: McpToolInfo[] }>('mcp:tools', cb)
   },
   app: {
     openDataDir: () => ipcRenderer.send('app:open-data-dir'),

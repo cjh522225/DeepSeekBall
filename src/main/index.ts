@@ -4,6 +4,7 @@ import { configureUserData } from './appPaths'
 import { loadSettings } from './config'
 import { isInsideDataDir } from './store/attachments'
 import { abortAllRequests, registerIpc } from './ipc'
+import { mcpManager } from './mcp/McpManager'
 import { applyBallAppearance, createBallWindow, getBallWindow } from './windows/ballWindow'
 import { createPanelWindow, finalizeHide, getPanelWindow, showPanel } from './windows/panelWindow'
 import { createTray, destroyTray } from './tray'
@@ -90,6 +91,7 @@ app.whenReady().then(() => {
   app.on('activate', () => showPanel())
 
   void syncAutoLaunch()
+  void mcpManager.refresh()
 
   startFullscreenWatcher((active) => {
     const ball = getBallWindow()
@@ -106,6 +108,7 @@ app.whenReady().then(() => {
 app.on('before-quit', () => {
   quitting = true
   abortAllRequests()
+  void mcpManager.disconnectAll()
   unregisterAllShortcuts()
   stopFullscreenWatcher()
   destroyTray()

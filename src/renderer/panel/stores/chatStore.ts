@@ -1,10 +1,16 @@
 import { create } from 'zustand'
-import type { Attachment, ChatMessage } from '../../../shared/types'
+import type { Attachment, ChatMessage, ToolCallRecord, ToolConfirmRequestEvent } from '../../../shared/types'
 import { useConvStore } from './convStore'
 
 interface ToastState {
   type: 'info' | 'warn' | 'error'
   message: string
+}
+
+export interface ToolConfirmState {
+  requestId: string
+  conversationId: string
+  toolCall: ToolCallRecord
 }
 
 interface ChatState {
@@ -15,6 +21,7 @@ interface ChatState {
   quote: string
   attachments: Attachment[]
   toast: ToastState | null
+  toolConfirm: ToolConfirmState | null
   loadConversation: (id: string | null) => Promise<void>
   setDraft: (draft: string) => void
   setQuote: (quote: string) => void
@@ -27,6 +34,9 @@ interface ChatState {
   showToast: (toast: ToastState) => void
   dismissToast: () => void
   handleChunk: (event: { requestId: string; contentDelta?: string; reasoningDelta?: string }) => void
+  handleToolCall: (event: { requestId: string; toolCall: ToolCallRecord }) => void
+  handleToolConfirm: (event: ToolConfirmRequestEvent) => void
+  respondToolConfirm: (approved: boolean) => void
   handleDone: (event: { requestId: string; message: ChatMessage }) => void
   handleError: (event: { requestId: string; error: string }) => void
 }
@@ -41,6 +51,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   quote: '',
   attachments: [],
   toast: null,
+  toolConfirm: null,
 
   loadConversation: async (id) => {
     if (!id) {
@@ -133,7 +144,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   stop: () => {
-    const { requestId } = get()
+    const { requestId, toolConfirm } = get()
+    if (toolConfirm) set({ toolConfirm: null })
     if (requestId) window.api.chat.stop(requestId)
   },
 
@@ -158,18 +170,48 @@ export const useChatStore = create<ChatState>((set, get) => ({
       )
     })),
 
+  handleToolCall: (event) =>
+    set((state) => ({
+      messages: state.messages.map((message) => {
+        if (message.id !== `local-assistant-${event.requestId}`) return message
+        const toolCalls = message.toolCalls ? [...message.toolCalls] : []
+        const index = toolCalls.findIndex((record) => record.id === event.toolCall.id)
+        if (index >= 0) toolCalls[index] = event.toolCall
+        else toolCalls.push(event.toolCall)
+        return { ...message, toolCalls }
+      })
+    })),
+
+  handleToolConfirm: (event) =>
+    set({ toolConfirm: { requestId: event.requestId, conversationId: event.conversationId, toolCall: event.toolCall } }),
+
+  respondToolConfirm: (approved) => {
+    const pending = get().toolConfirm
+    if (!pending) return
+    window.api.chat.respondToolConfirm({
+      requestId: pending.requestId,
+      toolCallId: pending.toolCall.id,
+      approved
+    })
+    set({ toolConfirm: null })
+  },
+
   handleDone: (event) => {
     set((state) => {
       const targetId = `local-assistant-${event.requestId}`
       const final = event.message
+      const toolConfirm =
+        state.toolConfirm?.requestId === event.requestId ? null : state.toolConfirm
       if (final.status === 'aborted' && !final.content) {
         return {
           requestId: null,
+          toolConfirm,
           messages: state.messages.filter((m) => m.id !== targetId)
         }
       }
       return {
         requestId: null,
+        toolConfirm,
         messages: state.messages.map((m) => (m.id === targetId ? final : m))
       }
     })
@@ -179,6 +221,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   handleError: (event) => {
     set((state) => ({
       requestId: null,
+      toolConfirm: state.toolConfirm?.requestId === event.requestId ? null : state.toolConfirm,
       messages: state.messages.map((message) =>
         message.id === `local-assistant-${event.requestId}`
           ? { ...message, status: 'error', error: event.error, content: message.content }

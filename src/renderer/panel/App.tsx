@@ -5,8 +5,10 @@ import { Header } from './components/Header'
 import { MessageList } from './components/MessageList'
 import { SettingsView } from './components/SettingsView'
 import { Toast } from './components/Toast'
+import { ToolConfirmDialog } from './components/ToolConfirmDialog'
 import { useChatStore } from './stores/chatStore'
 import { useConvStore } from './stores/convStore'
+import { useMcpStore } from './stores/mcpStore'
 import { useSettingsStore } from './stores/settingsStore'
 
 export default function App(): JSX.Element {
@@ -53,6 +55,7 @@ export default function App(): JSX.Element {
       if (conversations.length > 0) {
         await useConvStore.getState().select(conversations[0].id)
       }
+      await useMcpStore.getState().load()
     }
     void bootstrap()
 
@@ -78,6 +81,14 @@ export default function App(): JSX.Element {
       window.api.chat.onChunk((event) => useChatStore.getState().handleChunk(event)),
       window.api.chat.onDone((event) => useChatStore.getState().handleDone(event)),
       window.api.chat.onError((event) => useChatStore.getState().handleError(event)),
+      window.api.chat.onToolCall((event) => useChatStore.getState().handleToolCall(event)),
+      window.api.chat.onToolConfirmRequest((event) =>
+        useChatStore.getState().handleToolConfirm(event)
+      ),
+      window.api.mcp.onStatus((status) => useMcpStore.getState().setStatus(status)),
+      window.api.mcp.onTools(({ serverId, tools }) =>
+        useMcpStore.getState().setTools(serverId, tools)
+      ),
       window.api.composer.onInsert((payload) => {
         const chat = useChatStore.getState()
         setView('chat')
@@ -118,6 +129,7 @@ export default function App(): JSX.Element {
         )}
         <ConversationDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
         <Toast />
+        <ToolConfirmDialog />
       </div>
     </div>
   )

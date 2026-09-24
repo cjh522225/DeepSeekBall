@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { BrowserWindow } from 'electron'
 import { loadSettings } from '../config'
 import type { ChatMessage } from '../../shared/types'
-import type { ChatProvider, ProviderContext } from './types'
+import type { ChatProvider, ProviderContext, ProviderTurn } from './types'
 
 const ORIGIN = 'https://chat.deepseek.com'
 const PARTITION = 'persist:deepseek-web'
@@ -247,7 +247,7 @@ async function requestCompletion(
 }
 
 export const deepseekWebProvider: ChatProvider = {
-  async stream(ctx: ProviderContext): Promise<void> {
+  async stream(ctx: ProviderContext): Promise<ProviderTurn> {
     const token = await getUserToken()
     if (!token) throw new Error('未登录 DeepSeek 网页账号，请先在设置中点击「登录网页账号」')
     const thinking = /reason/i.test(ctx.settings.model)
@@ -268,6 +268,7 @@ export const deepseekWebProvider: ChatProvider = {
       client_ready_at: Date.now()
     }
     await requestCompletion(token, body, ctx)
+    return { toolCalls: [] }
   }
 }
 

@@ -21,6 +21,7 @@ export interface ChatMessage {
   attachments?: Attachment[]
   createdAt: number
   model?: string
+  toolCalls?: ToolCallRecord[]
 }
 
 export interface ConversationMeta {
@@ -35,6 +36,73 @@ export interface ConversationMeta {
 
 export interface Conversation extends ConversationMeta {
   messages: ChatMessage[]
+}
+
+export type McpTransportKind = 'sse' | 'stdio'
+
+export interface McpServerConfig {
+  id: string
+  name: string
+  enabled: boolean
+  transport: McpTransportKind
+  url?: string
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
+}
+
+export interface McpToolInfo {
+  name: string
+  description?: string
+  inputSchema: Record<string, unknown>
+}
+
+export type McpConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error'
+
+export interface McpServerStatus {
+  id: string
+  state: McpConnectionState
+  error?: string
+  tools: McpToolInfo[]
+  updatedAt: number
+}
+
+export type ToolCallStatus = 'running' | 'awaiting' | 'success' | 'error' | 'rejected'
+
+export interface ToolCallRecord {
+  id: string
+  name: string
+  serverId: string
+  serverName: string
+  args: string
+  status: ToolCallStatus
+  result?: string
+  error?: string
+  createdAt: number
+}
+
+export interface ToolCallEvent {
+  requestId: string
+  conversationId: string
+  toolCall: ToolCallRecord
+}
+
+export interface ToolConfirmRequestEvent {
+  requestId: string
+  conversationId: string
+  toolCall: ToolCallRecord
+}
+
+export interface ToolConfirmResponsePayload {
+  requestId: string
+  toolCallId: string
+  approved: boolean
+}
+
+export interface McpCallToolPayload {
+  serverId?: string
+  name: string
+  arguments: string
 }
 
 export type ProviderKind = 'official' | 'custom' | 'web'
@@ -62,6 +130,7 @@ export interface Settings {
   hideOnFullscreen: boolean
   hotkeys: HotkeySettings
   autoLaunch: boolean
+  mcpServers: McpServerConfig[]
 }
 
 export interface PublicSettings extends Settings {

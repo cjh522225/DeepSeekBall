@@ -136,3 +136,26 @@ export const ImageIcon = (props: IconProps): JSX.Element => (
     <path d="M5 17l4.2-4.2L13 16.6l2.6-2.6L20 18" />
   </svg>
 )
+
+export const ToolIcon = (props: IconProps): JSX.Element => (
+  <svg {...base(props)}>
+    <path d="M14.5 4.5a4.2 4.2 0 0 0 5.3 5.6l-7.6 7.6a2.1 2.1 0 1 1-3-3l7.6-7.6a4.2 4.2 0 0 1-2.3-2.6z" />
+    <path d="M6.5 6.5l2 2" />
+  </svg>
+)
+
+export const ServerIcon = (props: IconProps): JSX.Element => (
+  <svg {...base(props)}>
+    <rect x="4" y="4.5" width="16" height="6" rx="1.6" />
+    <rect x="4" y="13.5" width="16" height="6" rx="1.6" />
+    <path d="M7.5 7.5h.01M7.5 16.5h.01" />
+  </svg>
+)
+
+export const PlugIcon = (props: IconProps): JSX.Element => (
+  <svg {...base(props)}>
+    <path d="M9 3.5v5M15 3.5v5" />
+    <path d="M6.5 8.5h11v3a5.5 5.5 0 0 1-11 0z" />
+    <path d="M12 17v3.5" />
+  </svg>
+)

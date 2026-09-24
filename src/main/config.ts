@@ -24,7 +24,8 @@ export const DEFAULT_SETTINGS: Settings = {
     screenshot: 'Alt+Shift+A',
     clipboard: 'Alt+Shift+Q'
   },
-  autoLaunch: false
+  autoLaunch: false,
+  mcpServers: []
 }
 
 let cached: Settings | null = null

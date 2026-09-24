@@ -5,11 +5,18 @@ import type {
   ChatSendPayload,
   Conversation,
   ConversationMeta,
+  McpCallToolPayload,
+  McpServerConfig,
+  McpServerStatus,
+  McpToolInfo,
   PublicSettings,
   SettingsPatch,
   StreamChunkEvent,
   StreamDoneEvent,
-  StreamErrorEvent
+  StreamErrorEvent,
+  ToolCallEvent,
+  ToolConfirmRequestEvent,
+  ToolConfirmResponsePayload
 } from './types'
 
 export interface Unsubscribe {
@@ -43,9 +50,12 @@ export interface RendererApi {
   chat: {
     send: (payload: ChatSendPayload) => Promise<void>
     stop: (requestId: string) => void
+    respondToolConfirm: (payload: ToolConfirmResponsePayload) => void
     onChunk: (cb: (e: StreamChunkEvent) => void) => Unsubscribe
     onDone: (cb: (e: StreamDoneEvent) => void) => Unsubscribe
     onError: (cb: (e: StreamErrorEvent) => void) => Unsubscribe
+    onToolCall: (cb: (e: ToolCallEvent) => void) => Unsubscribe
+    onToolConfirmRequest: (cb: (e: ToolConfirmRequestEvent) => void) => Unsubscribe
   }
   settings: {
     get: () => Promise<PublicSettings>
@@ -73,6 +83,20 @@ export interface RendererApi {
   }
   ocr: {
     run: (filePath: string) => Promise<{ ok: boolean; text: string; message?: string }>
+  }
+  mcp: {
+    listServers: () => Promise<McpServerConfig[]>
+    listStatuses: () => Promise<McpServerStatus[]>
+    upsertServer: (config: McpServerConfig) => Promise<McpServerConfig[]>
+    removeServer: (id: string) => Promise<McpServerConfig[]>
+    testConnection: (
+      config: McpServerConfig
+    ) => Promise<{ ok: boolean; message: string; tools: McpToolInfo[] }>
+    listTools: (serverId?: string) => Promise<McpToolInfo[]>
+    callTool: (payload: McpCallToolPayload) => Promise<{ ok: boolean; text: string }>
+    refresh: () => Promise<McpServerStatus[]>
+    onStatus: (cb: (status: McpServerStatus) => void) => Unsubscribe
+    onTools: (cb: (payload: { serverId: string; tools: McpToolInfo[] }) => void) => Unsubscribe
   }
   app: {
     openDataDir: () => void

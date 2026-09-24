@@ -21,10 +21,14 @@ import {
 import { saveImageBase64, saveImageBuffer } from '../store/attachments'
 import { runOcr } from '../services/ocr'
 import {
+  buildApiMessages,
   listModels,
   openAICompatibleProvider,
   testConnection
 } from '../providers/openaiCompatible'
+import { mcpManager } from '../mcp/McpManager'
+import { runToolLoop } from '../mcp/toolLoop'
+import { summarizeToolArguments, toOpenAITools, type ToolCallRequest } from '../mcp/tools'
 import {
   checkWebLogin,
   closeLoginWindow,
@@ -61,8 +65,12 @@ import type {
   ChatMessage,
   ChatSendPayload,
   CaptureSubmitPayload,
+  McpCallToolPayload,
+  McpServerConfig,
   PublicSettings,
-  SettingsPatch
+  SettingsPatch,
+  ToolCallRecord,
+  ToolConfirmResponsePayload
 } from '../../shared/types'
 
 interface ActiveRequest {
@@ -73,9 +81,26 @@ interface ActiveRequest {
   reasoning: string
   status: ChatMessage['status']
   error?: string
+  toolCalls: ToolCallRecord[]
 }
 
 const active = new Map<string, ActiveRequest>()
+
+interface PendingConfirm {
+  requestId: string
+  resolve: (approved: boolean) => void
+}
+
+const pendingConfirms = new Map<string, PendingConfirm>()
+const CONFIRM_TIMEOUT_MS = 120_000
+
+function resolveConfirms(requestId: string, approved: boolean): void {
+  for (const [toolCallId, pending] of [...pendingConfirms.entries()]) {
+    if (pending.requestId !== requestId) continue
+    pendingConfirms.delete(toolCallId)
+    pending.resolve(approved)
+  }
+}
 
 function publicSettings(): Promise<PublicSettings> {
   return Promise.all([checkWebLogin(), getAutoLaunchState()]).then(([webLoggedIn, autoLaunchActive]) => ({
@@ -112,6 +137,57 @@ async function runStream(requestId: string): Promise<void> {
   }
   const provider: ChatProvider =
     settings.provider === 'web' ? deepseekWebProvider : openAICompatibleProvider
+  const bindings = new Map(mcpManager.toolBindings().map((binding) => [binding.exposedName, binding]))
+  const records = new Map<string, ToolCallRecord>()
+
+  const upsertToolCall = (call: ToolCallRequest, patch: Partial<ToolCallRecord>): ToolCallRecord => {
+    const binding = bindings.get(call.name)
+    const previous = records.get(call.id)
+    const next: ToolCallRecord = {
+      ...(previous ?? {
+        id: call.id,
+        name: binding?.tool.name ?? call.name,
+        serverId: binding?.serverId ?? '',
+        serverName: binding?.serverName ?? 'MCP',
+        args: summarizeToolArguments(call.argumentsJson),
+        status: 'running' as const,
+        createdAt: Date.now()
+      }),
+      ...patch
+    }
+    records.set(call.id, next)
+    const index = entry.toolCalls.findIndex((record) => record.id === next.id)
+    if (index >= 0) entry.toolCalls[index] = next
+    else entry.toolCalls.push(next)
+    sendToPanel('chat:tool-call', {
+      requestId,
+      conversationId: entry.conversationId,
+      toolCall: next
+    })
+    return next
+  }
+
+  const requestToolConfirm = (call: ToolCallRequest, record: ToolCallRecord): Promise<boolean> =>
+    new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        pendingConfirms.delete(call.id)
+        resolve(false)
+      }, CONFIRM_TIMEOUT_MS)
+      pendingConfirms.set(call.id, {
+        requestId,
+        resolve: (approved) => {
+          clearTimeout(timer)
+          resolve(approved)
+        }
+      })
+      showPanel()
+      sendToPanel('chat:toolConfirmRequest', {
+        requestId,
+        conversationId: entry.conversationId,
+        toolCall: record
+      })
+    })
+
   const ctx: ProviderContext = {
     settings,
     apiKey: getApiKey(),
@@ -137,7 +213,54 @@ async function runStream(requestId: string): Promise<void> {
     }
   }
   try {
-    await provider.stream(ctx)
+    const tools = settings.provider === 'web' ? [] : toOpenAITools(mcpManager.toolBindings())
+    const apiMessages = buildApiMessages(settings, conversation.messages)
+    await runToolLoop({
+      messages: apiMessages,
+      tools,
+      signal: entry.controller.signal,
+      requestTurn: async (messages, turnTools) => {
+        const turn = await provider.stream({
+          ...ctx,
+          apiMessages: messages,
+          tools: turnTools.length > 0 ? turnTools : undefined
+        })
+        return { content: '', toolCalls: turn.toolCalls }
+      },
+      executeTool: async (call) => {
+        upsertToolCall(call, { status: 'running' })
+        const result = await mcpManager.callTool({
+          name: call.name,
+          arguments: call.argumentsJson
+        })
+        if (!result.ok) throw new Error(result.text)
+        return result.text
+      },
+      confirmTool: (call) => requestToolConfirm(call, upsertToolCall(call, { status: 'awaiting' })),
+      onToolCall: (call) => {
+        upsertToolCall(call, { status: 'running' })
+      },
+      onToolResult: (call, result, failed) => {
+        upsertToolCall(
+          call,
+          failed
+            ? { status: 'error', result, error: result }
+            : { status: 'success', result }
+        )
+      },
+      onToolRejected: (call) => {
+        upsertToolCall(call, { status: 'rejected', result: '用户拒绝执行' })
+      },
+      onToolLimit: () => {
+        const notice = '\n\n（已达到工具调用轮次上限，停止继续调用工具）'
+        entry.content += notice
+        sendToPanel('chat:chunk', {
+          requestId,
+          conversationId: entry.conversationId,
+          contentDelta: notice
+        })
+      }
+    })
     entry.status = 'done'
   } catch (error) {
     if (entry.controller.signal.aborted) {
@@ -147,6 +270,7 @@ async function runStream(requestId: string): Promise<void> {
       entry.error = error instanceof Error ? error.message : String(error)
     }
   } finally {
+    resolveConfirms(requestId, false)
     const keepMessage = entry.content.length > 0 || entry.reasoning.length > 0
     let finalMessage: ChatMessage | null = null
     if (entry.status !== 'aborted' || keepMessage) {
@@ -158,7 +282,8 @@ async function runStream(requestId: string): Promise<void> {
         status: entry.status,
         error: entry.error,
         createdAt: Date.now(),
-        model: settings.model
+        model: settings.model,
+        toolCalls: entry.toolCalls.length > 0 ? entry.toolCalls : undefined
       }
       appendMessage(entry.conversationId, finalMessage)
     }
@@ -277,7 +402,8 @@ export function registerIpc(): void {
       messageId: randomUUID(),
       content: '',
       reasoning: '',
-      status: 'streaming'
+      status: 'streaming',
+      toolCalls: []
     }
     active.set(payload.requestId, entry)
     setBallStreaming(true)
@@ -285,9 +411,39 @@ export function registerIpc(): void {
   })
 
   ipcMain.on('chat:stop', (_event, requestId: string) => {
+    resolveConfirms(requestId, false)
     const entry = active.get(requestId)
     if (entry) entry.controller.abort()
   })
+
+  ipcMain.on('chat:toolConfirmResponse', (_event, payload: ToolConfirmResponsePayload) => {
+    const pending = pendingConfirms.get(payload.toolCallId)
+    if (!pending || pending.requestId !== payload.requestId) return
+    pendingConfirms.delete(payload.toolCallId)
+    pending.resolve(payload.approved)
+  })
+
+  mcpManager.onStatus((status) => sendToPanel('mcp:status', status))
+  mcpManager.onTools((serverId, tools) => sendToPanel('mcp:tools', { serverId, tools }))
+
+  ipcMain.handle('mcp:list-servers', () => mcpManager.listServers())
+  ipcMain.handle('mcp:list-statuses', () => mcpManager.listStatuses())
+  ipcMain.handle('mcp:upsert-server', async (_event, config: McpServerConfig) => {
+    const resolved: McpServerConfig = { ...config, id: config.id || randomUUID() }
+    const servers = mcpManager.upsertServer(resolved)
+    if (resolved.enabled) await mcpManager.connect(resolved.id)
+    else await mcpManager.disconnect(resolved.id)
+    return servers
+  })
+  ipcMain.handle('mcp:remove-server', (_event, id: string) => mcpManager.removeServer(id))
+  ipcMain.handle('mcp:test-connection', (_event, config: McpServerConfig) =>
+    mcpManager.testConnection(config)
+  )
+  ipcMain.handle('mcp:list-tools', (_event, serverId?: string) => mcpManager.listTools(serverId))
+  ipcMain.handle('mcp:call-tool', (_event, payload: McpCallToolPayload) =>
+    mcpManager.callTool(payload)
+  )
+  ipcMain.handle('mcp:refresh', () => mcpManager.refresh())
 
   ipcMain.handle('settings:get', () => publicSettings())
 
@@ -400,6 +556,7 @@ export function registerIpc(): void {
 }
 
 export function abortAllRequests(): void {
+  for (const requestId of [...active.keys()]) resolveConfirms(requestId, false)
   for (const entry of active.values()) entry.controller.abort()
   active.clear()
 }
