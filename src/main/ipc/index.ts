@@ -544,6 +544,7 @@ export function registerIpc(): void {
   ipcMain.handle('ocr:run', (_event, filePath: string) => runOcr(filePath))
 
   ipcMain.on('app:open-data-dir', () => void shell.openPath(dataDir()))
+  ipcMain.handle('app:get-data-dir', () => dataDir())
 
   ipcMain.handle('app:set-auto-launch', async (_event, enabled: boolean) => {
     saveSettings({ autoLaunch: enabled })

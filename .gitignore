@@ -8,3 +8,6 @@ dist/
 !docs/*.png
 .env
 .DS_Store
+
+# 运行数据目录（含会话与加密密钥，禁止提交）
+data/

@@ -26,7 +26,7 @@ Windows 桌面右侧的可移动悬浮球，点击展开聊天面板。类似 Ed
 - **游戏/全屏免打扰**：检测前台全屏窗口（游戏、全屏视频等），自动隐藏悬浮球，退出全屏后恢复；可在设置或托盘菜单中关闭（`hideOnFullscreen`）
 - **开机自启**：直接写入 `HKCU\...\CurrentVersion\Run` 并校验（含 StartupApproved 启用标记），设置页会显示真实生效状态；应用每次启动会自动校正启动项路径（如更换安装位置）。注意：`npm run dev` 开发模式不支持自启，需使用打包/安装后的应用
 - **截图/图片提问**：全屏选区截图 → Windows 内置 OCR 识别为文字（适配 deepseek-chat 等纯文本模型），或直接发送图片给多模态模型；支持 `Ctrl+V` 粘贴图片
-- **数据本地化**：会话、附件、配置全部存放于 `D:\DeepSeekBall\data`（可用「打开数据目录」直达）；API Key 使用 Windows DPAPI 加密存储
+- **数据本地化**：会话、附件、配置默认存放于项目目录下的 `data\`（打包版为程序同级 `data\`，见「数据与目录」；可用「打开数据目录」直达）；API Key 使用 Windows DPAPI 加密存储
 - **导出**：单会话导出 Markdown、全部数据导出 JSON 备份
 - **Provider 可切换**：DeepSeek 官方 API / OpenCode Go / 任意 OpenAI 兼容端点 / 实验性网页模式（复用网页登录态，见下方警告）
 - **MCP 客户端（桌面 Agent 宿主）**：集成 Model Context Protocol —— SSE 与 stdio 双传输、服务器增删改查、工具调用循环（上限 8 轮）、写操作界面二次确认、工具调用卡片、MCP 设置页；可连接业务系统（排班 / 宿舍）的 Agent 服务，在桌面端完成跨系统任务（详见下文「MCP 集成」）
@@ -130,13 +130,13 @@ npm run dist
 | 内容 | 位置 |
 |---|---|
 | 项目源码 | `D:\Projects\deepseek-ball` |
-| 运行数据（会话/附件/配置/日志） | `D:\DeepSeekBall\data`（D 盘不可用时回退到 `%APPDATA%\DeepSeekBall`） |
+| 运行数据（会话/附件/配置/日志） | 开发模式：`D:\Projects\deepseek-ball\data`；打包/便携版：程序同级的 `data\`（历史版本曾使用 `D:\DeepSeekBall\data`，首次启动会自动迁移；以上均不可用时回退 `%APPDATA%\DeepSeekBall`） |
 | 打包产物 | `D:\Projects\deepseek-ball\release` |
 
 数据目录结构：
 
 ```
-D:\DeepSeekBall\data\
+data\
 ├─ config.json                  # 应用设置
 ├─ secrets.json                 # API Key（DPAPI 加密）
 ├─ conversations\               # 会话数据（index.json + 每会话一个 json）

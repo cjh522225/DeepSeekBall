@@ -139,6 +139,14 @@ export function SettingsView(): JSX.Element {
   const [hotkeys, setHotkeys] = useState({ togglePanel: '', screenshot: '', clipboard: '' })
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null)
   const [testing, setTesting] = useState(false)
+  const [dataDirPath, setDataDirPath] = useState('')
+
+  useEffect(() => {
+    window.api.app
+      .getDataDir()
+      .then((dir) => setDataDirPath(dir))
+      .catch(() => void 0)
+  }, [])
 
   const initializedRef = useRef(false)
   useEffect(() => {
@@ -604,7 +612,7 @@ export function SettingsView(): JSX.Element {
       </Section>
 
       <div className="border-t border-ds-border pt-3 text-center text-[11px] text-ds-sub dark:border-dsdark-border dark:text-dsdark-sub">
-        DeepSeek Ball v{settings.version} · 数据存储于 D:\DeepSeekBall\data
+        DeepSeek Ball v{settings.version} · 数据存储于 {dataDirPath || '…'}
       </div>
     </div>
   )
