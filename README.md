@@ -11,8 +11,8 @@ Windows 桌面右侧的可移动悬浮球，点击展开聊天面板。类似 Ed
 
 | 产物 | 说明 | 下载 |
 |---|---|---|
-| 便携版 | 免安装，双击即用 | [DeepSeekBall-Portable-0.1.0.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.1.0/DeepSeekBall-Portable-0.1.0.exe) |
-| 安装版 | NSIS 安装包，可自选目录 | [DeepSeekBall-Setup-0.1.0.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.1.0/DeepSeekBall-Setup-0.1.0.exe) |
+| 便携版 v0.1.1 | 免安装，双击即用 | [DeepSeekBall-Portable-0.1.1.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.1.1/DeepSeekBall-Portable-0.1.1.exe) |
+| 安装版 v0.1.1 | NSIS 安装包，可自选目录 | [DeepSeekBall-Setup-0.1.1.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.1.1/DeepSeekBall-Setup-0.1.1.exe) |
 
 > 首次运行需在设置中填写模型 API Key（DeepSeek 官方或任意 OpenAI 兼容端点）。
 
