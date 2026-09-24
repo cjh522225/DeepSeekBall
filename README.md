@@ -7,6 +7,15 @@ Windows 桌面右侧的可移动悬浮球，点击展开聊天面板。类似 Ed
   <img src="docs/panel.png" width="330" alt="聊天面板" />
 </p>
 
+## 下载体验（免安装）
+
+| 产物 | 说明 | 下载 |
+|---|---|---|
+| 便携版 | 免安装，双击即用 | [DeepSeekBall-Portable-0.1.0.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.1.0/DeepSeekBall-Portable-0.1.0.exe) |
+| 安装版 | NSIS 安装包，可自选目录 | [DeepSeekBall-Setup-0.1.0.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.1.0/DeepSeekBall-Setup-0.1.0.exe) |
+
+> 首次运行需在设置中填写模型 API Key（DeepSeek 官方或任意 OpenAI 兼容端点）。
+
 
 ## 功能特性
 
@@ -20,6 +29,7 @@ Windows 桌面右侧的可移动悬浮球，点击展开聊天面板。类似 Ed
 - **数据本地化**：会话、附件、配置全部存放于 `D:\DeepSeekBall\data`（可用「打开数据目录」直达）；API Key 使用 Windows DPAPI 加密存储
 - **导出**：单会话导出 Markdown、全部数据导出 JSON 备份
 - **Provider 可切换**：DeepSeek 官方 API / OpenCode Go / 任意 OpenAI 兼容端点 / 实验性网页模式（复用网页登录态，见下方警告）
+- **MCP 客户端（桌面 Agent 宿主）**：集成 Model Context Protocol —— SSE 与 stdio 双传输、服务器增删改查、工具调用循环（上限 8 轮）、写操作界面二次确认、工具调用卡片、MCP 设置页；可连接业务系统（排班 / 宿舍）的 Agent 服务，在桌面端完成跨系统任务（详见下文「MCP 集成」）
 
 ## 快速开始（开发）
 
@@ -48,13 +58,51 @@ npm run dev          # 启动开发模式
 
 设置 → 官方 API → 填写 [platform.deepseek.com](https://platform.deepseek.com) 申请的 API Key，模型选 `deepseek-chat` 或 `deepseek-reasoner`。
 
+## MCP 集成（作为桌面 Agent 宿主）
+
+本应用内置 **MCP（Model Context Protocol）客户端**，可作为桌面侧 Agent 宿主连接业务系统的 MCP Server，
+把「本机工具 + 业务系统工具」统一交给模型编排：一次对话完成跨系统任务（例如同时查询排班与宿舍床位）。
+
+```mermaid
+flowchart LR
+  subgraph App[DeepSeekBall 桌面端]
+    UI[悬浮球 + 聊天面板]
+    LOOP[工具调用循环 · 上限 8 轮]
+    MCPC[MCP Client<br/>SSE / stdio]
+  end
+  subgraph S1[agent-service · 排班模式]
+    T1[排班/统计/请假工具]
+    R1[RAG 制度问答]
+  end
+  subgraph S2[agent-service · 宿舍模式]
+    T2[床位/住宿/违规工具]
+  end
+  LLM[(DeepSeek / OpenAI 兼容模型)]
+
+  UI --> LOOP --> LLM
+  LOOP --> MCPC
+  MCPC -->|MCP over SSE| T1
+  MCPC -->|MCP over SSE| T2
+  MCPC -->|MCP over SSE| R1
+```
+
+### 连接配套的 agent-service（三步）
+
+1. 启动 Agent 服务（默认 `http://localhost:8090`，MCP SSE 端点 `/sse`）：
+   获取代码 → [cjh522225/paiban-agent](https://github.com/cjh522225/paiban-agent) 的 `agent-service` 目录，
+   按其中 README 启动（`AGENT_MODE=paiban` 连排班系统，`AGENT_MODE=dorm` 连宿舍系统）
+2. 本应用：**设置 → MCP 服务器 → 添加**，传输选 `SSE`，地址填 `http://localhost:8090`，启用保存
+3. 点击**测试连接**，看到工具列表（如 `currentWeek` / `mySchedule` / `searchPolicy`）后即可在对话中直接提问
+
+> 安全说明：MCP 暴露的均为**只读工具**；聊天中的写操作工具需要界面二次确认后才会执行。
+
 ## 常用命令
 
 | 命令 | 说明 |
 |---|---|
 | `npm run dev` | 开发模式（热更新） |
 | `npm run typecheck` | 主进程 / 渲染进程类型检查 |
-| `npm test` | Vitest 单元测试 |
+| `npm test` | Vitest 单元测试（41 个用例，含 MCP 客户端真实 stdio 端到端） |
 | `npm run build` | 构建到 `out/` |
 | `npm run dist` | 打包安装包（NSIS + 便携版）到 `release/` |
 
