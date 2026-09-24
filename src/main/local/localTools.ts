@@ -1,7 +1,7 @@
 import { exec } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import type { LocalToolsSettings } from '../../shared/types'
+import type { AgentMode, LocalToolsSettings } from '../../shared/types'
 import type { OpenAIFunctionTool } from '../mcp/tools'
 
 const MAX_READ_BYTES = 200_000
@@ -27,6 +27,8 @@ const SKIP_DIRS = new Set([
 
 const TOOL_NAMES = ['read_file', 'write_file', 'edit_file', 'list_dir', 'search_files', 'run_command'] as const
 export type LocalToolName = (typeof TOOL_NAMES)[number]
+
+export const READ_ONLY_LOCAL_TOOLS = ['read_file', 'list_dir', 'search_files'] as const
 
 const SCHEMAS: Record<LocalToolName, { description: string; parameters: Record<string, unknown> }> = {
   read_file: {
@@ -101,9 +103,16 @@ export function isLocalTool(name: string): boolean {
   return (TOOL_NAMES as readonly string[]).includes(name)
 }
 
-export function localToolSchemas(settings: LocalToolsSettings | undefined): OpenAIFunctionTool[] {
+export function localToolSchemas(
+  settings: LocalToolsSettings | undefined,
+  mode: AgentMode = 'build'
+): OpenAIFunctionTool[] {
   if (!settings?.enabled) return []
-  return TOOL_NAMES.filter((name) => name !== 'run_command' || settings.allowCommands).map((name) => ({
+  const planMode = mode === 'plan'
+  return TOOL_NAMES.filter((name) => {
+    if (planMode) return (READ_ONLY_LOCAL_TOOLS as readonly string[]).includes(name)
+    return name !== 'run_command' || settings.allowCommands
+  }).map((name) => ({
     type: 'function' as const,
     function: {
       name,
@@ -116,8 +125,12 @@ export function localToolSchemas(settings: LocalToolsSettings | undefined): Open
 export async function executeLocalTool(
   name: string,
   args: Record<string, unknown>,
-  settings: LocalToolsSettings
+  settings: LocalToolsSettings,
+  mode: AgentMode = 'build'
 ): Promise<string> {
+  if (mode === 'plan' && !(READ_ONLY_LOCAL_TOOLS as readonly string[]).includes(name)) {
+    throw new Error('当前处于 Plan（计划）模式：只允许读取与检索，请切换到 Build 模式后再执行写操作')
+  }
   switch (name as LocalToolName) {
     case 'read_file':
       return readFile(args, settings)

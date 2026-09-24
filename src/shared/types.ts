@@ -113,6 +113,8 @@ export interface HotkeySettings {
   clipboard: string
 }
 
+export type AgentMode = 'plan' | 'build'
+
 export interface LocalToolsSettings {
   enabled: boolean
   roots: string[]
@@ -138,6 +140,7 @@ export interface Settings {
   autoLaunch: boolean
   mcpServers: McpServerConfig[]
   localTools: LocalToolsSettings
+  agentMode: AgentMode
 }
 
 export interface PublicSettings extends Settings {

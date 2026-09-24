@@ -60,9 +60,12 @@ export function buildApiMessages(settings: Settings, messages: ChatMessage[]): u
   )
   const context = usable.slice(-Math.max(1, settings.maxContextMessages))
   const result: Array<Record<string, unknown>> = []
-  if (settings.systemPrompt.trim()) {
-    result.push({ role: 'system', content: settings.systemPrompt.trim() })
-  }
+  const modeText =
+    settings.agentMode === 'plan'
+      ? '当前处于 Plan（计划）模式：你可以读取文件、检索内容与查询数据，但禁止修改文件、执行命令或调用任何写操作。请先给出实施计划（目标、步骤、涉及文件、风险点），并提示用户切换到 Build 模式后再执行。'
+      : '当前处于 Build（构建）模式：你可以读写文件、执行命令与调用工具；破坏性操作会请求用户确认。'
+  const systemText = [settings.systemPrompt.trim(), modeText].filter((part) => part.length > 0).join('\n\n')
+  result.push({ role: 'system', content: systemText })
   for (const message of context) {
     result.push({
       role: message.role,

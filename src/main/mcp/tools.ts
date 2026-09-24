@@ -1,4 +1,5 @@
 import type { McpToolInfo } from '../../shared/types'
+import { isLocalTool, READ_ONLY_LOCAL_TOOLS } from '../local/localTools'
 
 export const MAX_TOOL_ROUNDS = 8
 
@@ -32,6 +33,15 @@ export interface McpToolBinding {
 
 export function isWriteTool(name: string): boolean {
   return WRITE_TOOL_PATTERN.test(name.trim())
+}
+
+export function filterToolsForMode(tools: OpenAIFunctionTool[], mode: string): OpenAIFunctionTool[] {
+  if (mode !== 'plan') return tools
+  return tools.filter((tool) => {
+    const name = tool.function.name
+    if ((READ_ONLY_LOCAL_TOOLS as readonly string[]).includes(name)) return true
+    return !isLocalTool(name) && !isWriteTool(name)
+  })
 }
 
 export function sanitizeToolName(name: string): string {

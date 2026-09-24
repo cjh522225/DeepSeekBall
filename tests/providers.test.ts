@@ -78,19 +78,21 @@ describe('buildApiMessages', () => {
       msg('assistant', '', { status: 'error', error: 'boom' }),
       msg('assistant', '你好呀')
     ]) as Array<{ role: string; content: unknown }>
-    expect(result[0]).toEqual({ role: 'system', content: '你是助手' })
-    expect(result).toHaveLength(3)
-    expect(result[2].role).toBe('assistant')
+      expect(result[0].role).toBe('system')
+      expect(String(result[0].content)).toContain('你是助手')
+      expect(String(result[0].content)).toContain('Build（构建）模式')
+      expect(result).toHaveLength(3)
+      expect(result[2].role).toBe('assistant')
   })
 
   it('limits context by maxContextMessages', () => {
     const settings = { ...baseSettings(), systemPrompt: '', maxContextMessages: 2 }
     const history: ChatMessage[] = []
     for (let i = 0; i < 6; i += 1) history.push(msg(i % 2 === 0 ? 'user' : 'assistant', `m${i}`))
-    const result = providers.buildApiMessages(settings, history) as Array<{ content: unknown }>
-    expect(result).toHaveLength(2)
-    expect(result[0].content).toBe('m4')
-    expect(result[1].content).toBe('m5')
+      const result = providers.buildApiMessages(settings, history) as Array<{ content: unknown }>
+      expect(result).toHaveLength(3)
+      expect(result[1].content).toBe('m4')
+      expect(result[2].content).toBe('m5')
   })
 
   it('attaches images only in vision mode', () => {
@@ -99,17 +101,17 @@ describe('buildApiMessages', () => {
     const attachment = { id: 'a1', type: 'image' as const, filePath: imagePath }
     const withImage = msg('user', '看图', { attachments: [attachment] })
 
-    const ocrSettings = { ...baseSettings(), systemPrompt: '', imageHandling: 'ocr' as const }
-    const ocrResult = providers.buildApiMessages(ocrSettings, [withImage]) as Array<{ content: unknown }>
-    expect(typeof ocrResult[0].content).toBe('string')
+      const ocrSettings = { ...baseSettings(), systemPrompt: '', imageHandling: 'ocr' as const }
+      const ocrResult = providers.buildApiMessages(ocrSettings, [withImage]) as Array<{ content: unknown }>
+      expect(typeof ocrResult[1].content).toBe('string')
 
-    const visionSettings = { ...baseSettings(), systemPrompt: '', imageHandling: 'vision' as const }
-    const visionResult = providers.buildApiMessages(visionSettings, [withImage]) as Array<{
-      content: Array<Record<string, unknown>>
-    }>
-    expect(Array.isArray(visionResult[0].content)).toBe(true)
-    expect(visionResult[0].content[0].type).toBe('image_url')
-    expect(visionResult[0].content[1]).toEqual({ type: 'text', text: '看图' })
+      const visionSettings = { ...baseSettings(), systemPrompt: '', imageHandling: 'vision' as const }
+      const visionResult = providers.buildApiMessages(visionSettings, [withImage]) as Array<{
+        content: Array<Record<string, unknown>>
+      }>
+      expect(Array.isArray(visionResult[1].content)).toBe(true)
+      expect(visionResult[1].content[0].type).toBe('image_url')
+      expect(visionResult[1].content[1]).toEqual({ type: 'text', text: '看图' })
   })
 })
 

@@ -445,6 +445,39 @@ export function SettingsView(): JSX.Element {
         <McpSettings />
       </Section>
 
+      <Section title="Agent 模式">
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            className={`flex-1 rounded-lg border px-2.5 py-2 text-left text-xs transition-colors ${
+              settings.agentMode === 'plan'
+                ? 'border-amber-500/60 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                : 'border-ds-border text-ds-sub hover:border-ds-brand/40 dark:border-dsdark-border dark:text-dsdark-sub'
+            }`}
+            onClick={() => void patch({ agentMode: 'plan' })}
+          >
+            计划（只读）
+            <span className="mt-0.5 block text-[11px] text-ds-sub dark:text-dsdark-sub">
+              只能读取/检索与查询数据，先给方案，不改文件不执行命令
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`flex-1 rounded-lg border px-2.5 py-2 text-left text-xs transition-colors ${
+              settings.agentMode === 'build'
+                ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                : 'border-ds-border text-ds-sub hover:border-ds-brand/40 dark:border-dsdark-border dark:text-dsdark-sub'
+            }`}
+            onClick={() => void patch({ agentMode: 'build' })}
+          >
+            构建（可写）
+            <span className="mt-0.5 block text-[11px] text-ds-sub dark:text-dsdark-sub">
+              开放文件读写与命令执行，破坏性操作每次弹窗确认
+            </span>
+          </button>
+        </div>
+      </Section>
+
       <Section title="本地工具">
         <LocalToolsSettings />
       </Section>

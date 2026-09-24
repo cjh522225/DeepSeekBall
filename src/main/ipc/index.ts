@@ -28,7 +28,7 @@ import {
 } from '../providers/openaiCompatible'
 import { mcpManager } from '../mcp/McpManager'
 import { runToolLoop } from '../mcp/toolLoop'
-import { parseToolArguments, summarizeToolArguments, toOpenAITools, type ToolCallRequest } from '../mcp/tools'
+import { parseToolArguments, filterToolsForMode, summarizeToolArguments, toOpenAITools, type ToolCallRequest } from '../mcp/tools'
 import { executeLocalTool, isLocalTool, localToolSchemas } from '../local/localTools'
 import {
   checkWebLogin,
@@ -218,7 +218,10 @@ async function runStream(requestId: string): Promise<void> {
     const tools =
       settings.provider === 'web'
         ? []
-        : [...toOpenAITools(mcpManager.toolBindings()), ...localToolSchemas(settings.localTools)]
+        : filterToolsForMode(
+            [...toOpenAITools(mcpManager.toolBindings()), ...localToolSchemas(settings.localTools, settings.agentMode)],
+            settings.agentMode
+          )
     const apiMessages = buildApiMessages(settings, conversation.messages)
     await runToolLoop({
       messages: apiMessages,
@@ -235,7 +238,12 @@ async function runStream(requestId: string): Promise<void> {
       executeTool: async (call) => {
         upsertToolCall(call, { status: 'running' })
         if (isLocalTool(call.name)) {
-          return executeLocalTool(call.name, parseToolArguments(call.argumentsJson), settings.localTools)
+          return executeLocalTool(
+            call.name,
+            parseToolArguments(call.argumentsJson),
+            settings.localTools,
+            settings.agentMode
+          )
         }
         const result = await mcpManager.callTool({
           name: call.name,

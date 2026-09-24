@@ -16,6 +16,8 @@ export default function App(): JSX.Element {
   const [view, setView] = useState<'chat' | 'settings'>('chat')
   const [drawerOpen, setDrawerOpen] = useState(false)
   const dark = useSettingsStore((s) => s.dark)
+  const agentMode = useSettingsStore((s) => s.settings?.agentMode ?? 'build')
+  const patchSettings = useSettingsStore((s) => s.patch)
   const currentId = useConvStore((s) => s.currentId)
   const list = useConvStore((s) => s.list)
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -114,6 +116,8 @@ export default function App(): JSX.Element {
         <Header
           title={title}
           view={view}
+          mode={agentMode}
+          onModeChange={(next) => void patchSettings({ agentMode: next })}
           onToggleDrawer={() => setDrawerOpen((v) => !v)}
           onNewChat={() => void newChat()}
           onOpenSettings={() => setView(view === 'settings' ? 'chat' : 'settings')}

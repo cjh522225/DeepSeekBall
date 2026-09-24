@@ -30,7 +30,8 @@ export const DEFAULT_SETTINGS: Settings = {
     enabled: false,
     roots: [],
     allowCommands: true
-  }
+  },
+  agentMode: 'build'
 }
 
 let cached: Settings | null = null

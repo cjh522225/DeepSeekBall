@@ -7,7 +7,7 @@ import {
   isLocalTool,
   localToolSchemas
 } from '../src/main/local/localTools'
-import { isWriteTool } from '../src/main/mcp/tools'
+import { filterToolsForMode, isWriteTool, type OpenAIFunctionTool } from '../src/main/mcp/tools'
 import type { LocalToolsSettings } from '../src/shared/types'
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dsb-local-'))
@@ -94,6 +94,48 @@ describe('file operations', () => {
     const result = await executeLocalTool('search_files', { query: '关键词', path: root }, enabled)
     expect(result).toContain('notes.md')
     expect(result).not.toContain('hidden.txt')
+  })
+})
+
+describe('plan mode', () => {
+  it('exposes only read-only local tools', () => {
+    const names = localToolSchemas(enabled, 'plan').map((tool) => tool.function.name)
+    expect(names).toEqual(['read_file', 'list_dir', 'search_files'])
+  })
+
+  it('blocks write tools at execution time', async () => {
+    await expect(
+      executeLocalTool('write_file', { path: path.join(root, 'blocked.txt'), content: 'x' }, enabled, 'plan')
+    ).rejects.toThrow(/Plan（计划）模式/)
+    await expect(executeLocalTool('run_command', { command: 'echo hi' }, enabled, 'plan')).rejects.toThrow(
+      /Plan（计划）模式/
+    )
+    expect(fs.existsSync(path.join(root, 'blocked.txt'))).toBe(false)
+  })
+
+  it('still allows reads in plan mode', async () => {
+    const result = await executeLocalTool('read_file', { path: path.join(root, 'notes.md') }, enabled, 'plan')
+    expect(result).toContain('关键词在这里')
+  })
+})
+
+describe('tool filtering by mode', () => {
+  const tools: OpenAIFunctionTool[] = [
+    { type: 'function', function: { name: 'read_file', parameters: {} } },
+    { type: 'function', function: { name: 'write_file', parameters: {} } },
+    { type: 'function', function: { name: 'run_command', parameters: {} } },
+    { type: 'function', function: { name: 'mySchedule', parameters: {} } },
+    { type: 'function', function: { name: 'approveLeave', parameters: {} } },
+    { type: 'function', function: { name: 'searchPolicy', parameters: {} } }
+  ]
+
+  it('keeps all tools in build mode', () => {
+    expect(filterToolsForMode(tools, 'build')).toHaveLength(6)
+  })
+
+  it('keeps only read-only tools in plan mode', () => {
+    const names = filterToolsForMode(tools, 'plan').map((tool) => tool.function.name)
+    expect(names).toEqual(['read_file', 'mySchedule', 'searchPolicy'])
   })
 })
 
