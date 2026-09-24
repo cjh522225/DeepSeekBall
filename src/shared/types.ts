@@ -113,6 +113,12 @@ export interface HotkeySettings {
   clipboard: string
 }
 
+export interface LocalToolsSettings {
+  enabled: boolean
+  roots: string[]
+  allowCommands: boolean
+}
+
 export interface Settings {
   provider: ProviderKind
   baseUrl: string
@@ -131,6 +137,7 @@ export interface Settings {
   hotkeys: HotkeySettings
   autoLaunch: boolean
   mcpServers: McpServerConfig[]
+  localTools: LocalToolsSettings
 }
 
 export interface PublicSettings extends Settings {

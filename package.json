@@ -1,6 +1,6 @@
 {
   "name": "deepseek-ball",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "private": true,
   "description": "桌面悬浮球 AI 助手（DeepSeek）",
   "main": "out/main/index.js",

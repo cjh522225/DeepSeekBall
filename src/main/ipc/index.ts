@@ -28,7 +28,8 @@ import {
 } from '../providers/openaiCompatible'
 import { mcpManager } from '../mcp/McpManager'
 import { runToolLoop } from '../mcp/toolLoop'
-import { summarizeToolArguments, toOpenAITools, type ToolCallRequest } from '../mcp/tools'
+import { parseToolArguments, summarizeToolArguments, toOpenAITools, type ToolCallRequest } from '../mcp/tools'
+import { executeLocalTool, isLocalTool, localToolSchemas } from '../local/localTools'
 import {
   checkWebLogin,
   closeLoginWindow,
@@ -143,12 +144,13 @@ async function runStream(requestId: string): Promise<void> {
   const upsertToolCall = (call: ToolCallRequest, patch: Partial<ToolCallRecord>): ToolCallRecord => {
     const binding = bindings.get(call.name)
     const previous = records.get(call.id)
+    const local = isLocalTool(call.name)
     const next: ToolCallRecord = {
       ...(previous ?? {
         id: call.id,
         name: binding?.tool.name ?? call.name,
-        serverId: binding?.serverId ?? '',
-        serverName: binding?.serverName ?? 'MCP',
+        serverId: binding?.serverId ?? (local ? 'local' : ''),
+        serverName: binding?.serverName ?? (local ? '本机' : 'MCP'),
         args: summarizeToolArguments(call.argumentsJson),
         status: 'running' as const,
         createdAt: Date.now()
@@ -213,7 +215,10 @@ async function runStream(requestId: string): Promise<void> {
     }
   }
   try {
-    const tools = settings.provider === 'web' ? [] : toOpenAITools(mcpManager.toolBindings())
+    const tools =
+      settings.provider === 'web'
+        ? []
+        : [...toOpenAITools(mcpManager.toolBindings()), ...localToolSchemas(settings.localTools)]
     const apiMessages = buildApiMessages(settings, conversation.messages)
     await runToolLoop({
       messages: apiMessages,
@@ -229,6 +234,9 @@ async function runStream(requestId: string): Promise<void> {
       },
       executeTool: async (call) => {
         upsertToolCall(call, { status: 'running' })
+        if (isLocalTool(call.name)) {
+          return executeLocalTool(call.name, parseToolArguments(call.argumentsJson), settings.localTools)
+        }
         const result = await mcpManager.callTool({
           name: call.name,
           arguments: call.argumentsJson
@@ -545,6 +553,11 @@ export function registerIpc(): void {
 
   ipcMain.on('app:open-data-dir', () => void shell.openPath(dataDir()))
   ipcMain.handle('app:get-data-dir', () => dataDir())
+  ipcMain.handle('app:pick-directory', async () => {
+    const result = await dialog.showOpenDialog({ properties: ['openDirectory', 'createDirectory'] })
+    if (result.canceled || result.filePaths.length === 0) return ''
+    return result.filePaths[0]
+  })
 
   ipcMain.handle('app:set-auto-launch', async (_event, enabled: boolean) => {
     saveSettings({ autoLaunch: enabled })

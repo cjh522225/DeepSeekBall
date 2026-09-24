@@ -3,7 +3,7 @@ import type { McpToolInfo } from '../../shared/types'
 export const MAX_TOOL_ROUNDS = 8
 
 export const WRITE_TOOL_PATTERN =
-  /^(create|update|delete|apply|approve|import|write|post|set|add|remove|save|clear)/i
+  /^(create|update|delete|apply|approve|import|write|post|set|add|remove|save|clear|edit|exec|run|shell|command)/i
 
 const TOOL_NAME_LIMIT = 64
 const DEFAULT_SCHEMA: Record<string, unknown> = { type: 'object', properties: {} }

@@ -101,6 +101,7 @@ export interface RendererApi {
   app: {
     openDataDir: () => void
   getDataDir: () => Promise<string>
+  pickDirectory: () => Promise<string>
     setAutoLaunch: (enabled: boolean) => Promise<{ ok: boolean; active: boolean; message: string }>
     version: () => Promise<string>
   }

@@ -25,7 +25,12 @@ export const DEFAULT_SETTINGS: Settings = {
     clipboard: 'Alt+Shift+Q'
   },
   autoLaunch: false,
-  mcpServers: []
+  mcpServers: [],
+  localTools: {
+    enabled: false,
+    roots: [],
+    allowCommands: true
+  }
 }
 
 let cached: Settings | null = null
@@ -53,6 +58,11 @@ export function loadSettings(): Settings {
   const fromDisk = readJson<Partial<Settings>>(configPath())
   cached = { ...DEFAULT_SETTINGS, ...(fromDisk ?? {}) }
   cached.hotkeys = { ...DEFAULT_SETTINGS.hotkeys, ...(fromDisk?.hotkeys ?? {}) }
+  cached.localTools = {
+    ...DEFAULT_SETTINGS.localTools,
+    ...(fromDisk?.localTools ?? {}),
+    roots: [...(fromDisk?.localTools?.roots ?? DEFAULT_SETTINGS.localTools.roots)]
+  }
   return cached
 }
 
@@ -63,7 +73,12 @@ export function saveSettings(patch: SettingsPatch): Settings {
   cached = {
     ...current,
     ...rest,
-    hotkeys: { ...current.hotkeys, ...(rest.hotkeys ?? {}) }
+    hotkeys: { ...current.hotkeys, ...(rest.hotkeys ?? {}) },
+    localTools: {
+      ...current.localTools,
+      ...(rest.localTools ?? {}),
+      roots: [...((rest.localTools ?? current.localTools).roots ?? [])]
+    }
   }
   writeJsonAtomic(configPath(), cached)
   return cached

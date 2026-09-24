@@ -11,8 +11,8 @@ Windows 桌面右侧的可移动悬浮球，点击展开聊天面板。类似 Ed
 
 | 产物 | 说明 | 下载 |
 |---|---|---|
-| 便携版 v0.1.1 | 免安装，双击即用 | [DeepSeekBall-Portable-0.1.1.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.1.1/DeepSeekBall-Portable-0.1.1.exe) |
-| 安装版 v0.1.1 | NSIS 安装包，可自选目录 | [DeepSeekBall-Setup-0.1.1.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.1.1/DeepSeekBall-Setup-0.1.1.exe) |
+| 便携版 v0.2.0 | 免安装，双击即用 | [DeepSeekBall-Portable-0.2.0.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.2.0/DeepSeekBall-Portable-0.2.0.exe) |
+| 安装版 v0.2.0 | NSIS 安装包，可自选目录 | [DeepSeekBall-Setup-0.2.0.exe](https://github.com/cjh522225/DeepSeekBall/releases/download/v0.2.0/DeepSeekBall-Setup-0.2.0.exe) |
 
 > 首次运行需在设置中填写模型 API Key（DeepSeek 官方或任意 OpenAI 兼容端点）。
 
@@ -30,6 +30,7 @@ Windows 桌面右侧的可移动悬浮球，点击展开聊天面板。类似 Ed
 - **导出**：单会话导出 Markdown、全部数据导出 JSON 备份
 - **Provider 可切换**：DeepSeek 官方 API / OpenCode Go / 任意 OpenAI 兼容端点 / 实验性网页模式（复用网页登录态，见下方警告）
 - **MCP 客户端（桌面 Agent 宿主）**：集成 Model Context Protocol —— SSE 与 stdio 双传输、服务器增删改查、工具调用循环（上限 8 轮）、写操作界面二次确认、工具调用卡片、MCP 设置页；可连接业务系统（排班 / 宿舍）的 Agent 服务，在桌面端完成跨系统任务（详见下文「MCP 集成」）
+- **本地工具（本机读写与命令执行）**：内置 `read_file` / `write_file` / `edit_file` / `list_dir` / `search_files` / `run_command`，可像命令行 Agent 一样读写本机文件并执行命令；**工作区白名单**限制可访问范围，写文件与执行命令一律弹窗确认（详见下文「本地工具」）
 
 ## 快速开始（开发）
 
@@ -96,13 +97,40 @@ flowchart LR
 
 > 安全说明：MCP 暴露的均为**只读工具**；聊天中的写操作工具需要界面二次确认后才会执行。
 
+## 本地工具（本机读写与命令执行）
+
+开启后，本应用可作为**本机 Agent** 使用：直接读写文件、搜索代码、执行 shell 命令，能力对齐命令行编程助手。
+
+| 工具 | 说明 | 是否需要确认 |
+|---|---|---|
+| `read_file` | 读取文本文件（最多 200KB） | 否（工作区内） |
+| `list_dir` | 列出目录内容（目录优先，最多 300 项） | 否（工作区内） |
+| `search_files` | 按文件名与内容搜索（自动跳过 node_modules/.git/dist 等，最多 80 条） | 否（工作区内） |
+| `write_file` | 写入/创建文件（覆盖写入，自动建父目录） | **是** |
+| `edit_file` | 精确字符串替换（old_string 需唯一或 `replace_all`） | **是** |
+| `run_command` | 执行 shell 命令（默认 120s 超时，最长 600s，输出截断 20KB） | **是** |
+
+### 安全模型
+
+- **工作区白名单**：所有路径必须位于「设置 → 本地工具」配置的目录内，越界直接拒绝（例如只加 `D:\Projects` 就只能操作该目录）
+- **写操作与命令必须确认**：`write_file` / `edit_file` / `run_command` 每次调用都会弹出确认框，拒绝则不执行
+- **命令可整体关闭**：设置中可关闭 `run_command`，只保留文件读写
+- **无交互不执行**：确认框 120 秒未响应视为拒绝；工具调用循环上限 8 轮
+
+### 开启方式
+
+1. 打开面板 → 设置 → **本地工具**
+2. 打开「启用本地工具」开关
+3. 添加工作区目录（可点「浏览…」选择，支持多个目录）
+4. 如需命令执行，保持「允许执行 shell 命令」开启；否则可关闭
+
 ## 常用命令
 
 | 命令 | 说明 |
 |---|---|
 | `npm run dev` | 开发模式（热更新） |
 | `npm run typecheck` | 主进程 / 渲染进程类型检查 |
-| `npm test` | Vitest 单元测试（41 个用例，含 MCP 客户端真实 stdio 端到端） |
+| `npm test` | Vitest 单元测试（53 个用例，含 MCP 客户端与本地工具） |
 | `npm run build` | 构建到 `out/` |
 | `npm run dist` | 打包安装包（NSIS + 便携版）到 `release/` |
 

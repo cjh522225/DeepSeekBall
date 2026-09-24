@@ -4,6 +4,7 @@ import { useChatStore } from '../stores/chatStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { AlertIcon, CheckIcon, FolderIcon } from './Icons'
 import { McpSettings } from './McpSettings'
+import { LocalToolsSettings } from './LocalToolsSettings'
 
 function Section({ title, children }: { title: string; children: ReactNode }): JSX.Element {
   return (
@@ -442,6 +443,10 @@ export function SettingsView(): JSX.Element {
 
       <Section title="MCP 服务器">
         <McpSettings />
+      </Section>
+
+      <Section title="本地工具">
+        <LocalToolsSettings />
       </Section>
 
       <Section title="图片提问">

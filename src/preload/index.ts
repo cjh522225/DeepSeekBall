@@ -111,6 +111,7 @@ const api: RendererApi = {
   app: {
     openDataDir: () => ipcRenderer.send('app:open-data-dir'),
     getDataDir: () => ipcRenderer.invoke('app:get-data-dir'),
+    pickDirectory: () => ipcRenderer.invoke('app:pick-directory'),
     setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke('app:set-auto-launch', enabled),
     version: () => ipcRenderer.invoke('app:version')
   }
